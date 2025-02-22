@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Modèle Patient
+model Patient {
+  id         Int       @id @default(autoincrement())
+  cin        String?   @unique
+  nom        String
+  prenom     String
+  sexe       String
+  adresse    String
+  telephone  String
+  assurance  String
+
+  // Relations
+  actes      Acte[]    
+  rendezvous Rendezvous[] 
+  imageries  Imagerie[]  // <-- Ajoutez cette ligne
+  paiements  Paiement[]  // <-- Ajoutez cette ligne
+  seances    Seance[]    // <-- Ajoutez cette ligne
+}
+
+
+// Modèle Acte
+model Acte {
+  id          Int       @id @default(autoincrement())
+  date        DateTime
+  dents       String
+  acte        String
+  prix        Float
+  status      String
+
+  // Relations
+  patientId   Int      
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  paiements   Paiement[] 
+  imageries   Imagerie[] 
+  seances     Seance[]  
+  rendezvous  Rendezvous[] 
+}
+
+// Modèle Rendezvous
+model Rendezvous {
+  id          Int       @id @default(autoincrement())
+  date        DateTime
+  heure       String
+  type        String
+
+  // Relations
+  patientId   Int      
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  acteId      Int?     
+  acte        Acte?    @relation(fields: [acteId], references: [id])
+}
+
+// Modèle Imagerie
+model Imagerie {
+  id          Int       @id @default(autoincrement())
+  acteId      Int      
+  patientId   Int
+  date        DateTime
+  imagerie    String
+  file        String
+
+  // Relations
+  acte        Acte     @relation(fields: [acteId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+}
+
+// Modèle Paiement
+model Paiement {
+  id          Int       @id @default(autoincrement())
+  acteId      Int
+  patientId   Int
+  date        DateTime
+  montant     Float
+  type        String
+
+  // Relations
+  acte        Acte     @relation(fields: [acteId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+}
+
+// Modèle Seance
+model Seance {
+  id          Int       @id @default(autoincrement())
+  acteId      Int
+  patientId   Int
+  date        DateTime
+  description String
+
+  // Relations
+  acte        Acte     @relation(fields: [acteId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+}
