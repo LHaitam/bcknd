@@ -61,17 +61,18 @@ model Rendezvous {
 
 // Modèle Imagerie
 model Imagerie {
-  id          Int       @id @default(autoincrement())
-  acteId      Int      
-  patientId   Int
-  date        DateTime
-  imagerie    String
-  file        String
+  id        Int      @id @default(autoincrement())
+  acteId    Int      
+  patientId Int
+  date      DateTime
+  imagerie  String
+  file      Bytes // Utilisation du type `Bytes` pour stocker le fichier en BLOB
 
   // Relations
-  acte        Acte     @relation(fields: [acteId], references: [id])
-  patient     Patient  @relation(fields: [patientId], references: [id])
+  acte      Acte     @relation(fields: [acteId], references: [id])
+  patient   Patient  @relation(fields: [patientId], references: [id])
 }
+
 
 // Modèle Paiement
 model Paiement {

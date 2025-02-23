@@ -1,22 +1,20 @@
-// routes/imagerie.js
-
 const express = require("express");
+const multer = require("multer");
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
-// Ajouter une imagerie
-router.post("/", async (req, res) => {
-  const { acteId, date, imagerie, file } = req.body;
+// Configuration de Multer pour stocker les fichiers en mémoire
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+// Ajouter une imagerie avec fichier BLOB
+router.post("/", upload.single("file"), async (req, res) => {
+  const { acteId, patientId, date, imagerie } = req.body;
+  const fileBuffer = req.file?.buffer; // Récupération du fichier sous forme de buffer
 
   try {
-    // Vérifier si la date est dans le passé
-    const currentDate = new Date();
-    if (new Date(date) < currentDate) {
-      return res.status(400).json({ error: "La date de l'imagerie ne peut pas être dans le passé" });
-    }
-
     // Vérifier si l'acte existe
     const acte = await prisma.acte.findUnique({
       where: { id: parseInt(acteId) },
@@ -26,13 +24,14 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ error: "L'acte spécifié n'existe pas" });
     }
 
-    // Créer l'imagerie
+    // Créer l'imagerie avec le fichier en BLOB
     const newImagerie = await prisma.imagerie.create({
       data: {
-        acteId,
-        date,
+        acteId: parseInt(acteId),
+        patientId: parseInt(patientId),
+        date: new Date(date),
         imagerie,
-        file,
+        file: fileBuffer,
       },
     });
 
@@ -42,12 +41,11 @@ router.post("/", async (req, res) => {
   }
 });
 
-
 // Récupérer toutes les imageries
 router.get("/", async (req, res) => {
   try {
     const imageries = await prisma.imagerie.findMany({
-      include: { acte: true }, // Inclure les détails de l'acte associé
+      include: { acte: true },
     });
     res.status(200).json(imageries);
   } catch (error) {
@@ -75,79 +73,23 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Récupérer toutes les imageries d'un patient par son ID
-router.get("/patient/:patientId", async (req, res) => {
-  const { patientId } = req.params;
-
-  try {
-    const imageries = await prisma.imagerie.findMany({
-      where: {
-        acte: {
-          patientId: parseInt(patientId),
-        },
-      },
-      include: { acte: true },
-    });
-
-    if (imageries.length > 0) {
-      res.status(200).json(imageries);
-    } else {
-      res.status(404).json({ error: "Aucune imagerie trouvée pour ce patient" });
-    }
-  } catch (error) {
-    res.status(500).json({ error: "Erreur lors de la récupération des imageries du patient" });
-  }
-});
-
-// Récupérer toutes les imageries d'un acte spécifique
-router.get("/acte/:acteId", async (req, res) => {
-  const { acteId } = req.params;
-
-  try {
-    const imageries = await prisma.imagerie.findMany({
-      where: { acteId: parseInt(acteId) },
-      include: { acte: true },
-    });
-
-    if (imageries.length > 0) {
-      res.status(200).json(imageries);
-    } else {
-      res.status(404).json({ error: "Aucune imagerie trouvée pour cet acte" });
-    }
-  } catch (error) {
-    res.status(500).json({ error: "Erreur lors de la récupération des imageries de l'acte" });
-  }
-});
-
-// Modifier une imagerie par ID
-router.put("/:id", async (req, res) => {
+// Récupérer le fichier image d'une imagerie
+router.get("/:id/image", async (req, res) => {
   const { id } = req.params;
-  const { acteId, date, imagerie, file } = req.body;
 
   try {
-    // Vérifier si l'acte existe
-    const acte = await prisma.acte.findUnique({
-      where: { id: parseInt(acteId) },
+    const imagerie = await prisma.imagerie.findUnique({
+      where: { id: parseInt(id) },
     });
 
-    if (!acte) {
-      return res.status(404).json({ error: "L'acte spécifié n'existe pas" });
+    if (!imagerie || !imagerie.file) {
+      return res.status(404).json({ error: "Image non trouvée" });
     }
 
-    // Modifier l'imagerie
-    const updatedImagerie = await prisma.imagerie.update({
-      where: { id: parseInt(id) },
-      data: {
-        acteId,
-        date,
-        imagerie,
-        file,
-      },
-    });
-
-    res.status(200).json(updatedImagerie);
+    res.setHeader("Content-Type", "image/jpeg");
+    res.send(imagerie.file);
   } catch (error) {
-    res.status(500).json({ error: "Erreur lors de la mise à jour de l'imagerie" });
+    res.status(500).json({ error: "Erreur lors de la récupération de l'image" });
   }
 });
 
